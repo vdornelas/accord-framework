@@ -34,6 +34,7 @@ namespace Accord.Neuro.Learning
     using System.Threading.Tasks;
     using AForge.Neuro;
     using AForge.Neuro.Learning;
+    using System.Runtime.Serialization;
 
 #if !NET35
     /// <summary>
@@ -160,6 +161,7 @@ namespace Accord.Neuro.Learning
     /// 
     /// <seealso cref="LevenbergMarquardtLearning"/>
     /// 
+    [Serializable]
     public class ParallelResilientBackpropagationLearning : ISupervisedLearning, IDisposable
     {
         private ActivationNetwork network;
@@ -172,7 +174,11 @@ namespace Accord.Neuro.Learning
         private double etaPlus = 1.2;
 
         private Object lockNetwork = new Object();
+
+        [NonSerialized]
         private ThreadLocal<double[][]> networkErrors;
+
+        [NonSerialized]
         private ThreadLocal<double[][]> networkOutputs;
 
         // update values, also known as deltas
@@ -297,8 +303,6 @@ namespace Accord.Neuro.Learning
             // Initialize steps
             Reset(initialStep);
         }
-
-
 
         /// <summary>
         ///   Runs learning iteration.
@@ -668,6 +672,25 @@ namespace Accord.Neuro.Learning
                 }
             }
         }
+
+        #region Serialization Members
+        /// <summary>
+        /// Fix the network parameters when it has been deserialized
+        /// </summary>
+        [OnDeserialized]
+        internal void OnDeserialized(StreamingContext context)
+        {
+            networkOutputs = new ThreadLocal<double[][]>(() => new double[network.Layers.Length][]);
+
+            networkErrors = new ThreadLocal<double[][]>(() =>
+            {
+                var e = new double[network.Layers.Length][];
+                for (int i = 0; i < e.Length; i++)
+                    e[i] = new double[network.Layers[i].Neurons.Length];
+                return e;
+            });
+        }
+        #endregion
 
         #region IDisposable Members
 
